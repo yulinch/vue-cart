@@ -1,2 +1,2 @@
 # vue-cart
-# vue-cart
+simple shopping cart
