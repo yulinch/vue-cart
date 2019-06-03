@@ -1,0 +1,200 @@
+<template>
+  <div id="cart-app" class="container">
+
+    <div class="row">
+      <div class="col-md-8">
+        <h1 class="page-header">VUEJS 實戰 - <small>5倍商城</small></h1>
+
+        <p v-if="filteredItems.length <= 0">找不到商品</p>
+
+        <div class="item" v-for="prod in filteredItems.slice(pageStart, pageStart + countOfPage)" :key="prod._id">
+          <h2>{{prod.name}}</h2>
+          <img class="item-img img-responsive" :src="prod.picture" alt="">
+          <p>{{prod.info}}</p>
+          <p class="item-price ">$ {{prod.price}} </p>
+          <a class="btn btn-primary " href="# " @click.prevent="addItem(prod.index)">放入購物車 <span class="glyphicon glyphicon-chevron-right "></span></a>
+        </div>
+
+        <hr>
+
+        <!--Pager -->
+        <ul class="pagination">
+          <li @click.prevent="setPage(currPage - 1)" :class="{'disabled' : currPage === 1}">
+            <a href="#" aria-label="Previous">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+          <li v-for="(p, index) in totalPage" @click.prevent="setPage(p)" :class="{'active' :currPage === p}"><a href="#">{{p}}</a></li>
+          <li @click.prevent="setPage(currPage + 1)" :class="{'disabled' : currPage === totalPage}">
+            <a href="#" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        </ul>
+
+      </div>
+
+      <!-- Blog Sidebar Widgets Column -->
+      <div class="col-md-4 ">
+
+        <div class="well ">
+          <h4>商品搜尋</h4>
+          <div class="input-group ">
+            <input type="text" class="form-control" v-model="searchName">
+            <span class="input-group-btn">
+              <button class="btn btn-default"><span class="glyphicon glyphicon-search "></span></button>
+            </span>
+          </div>
+          <!-- /.input-group -->
+        </div>
+
+        <hr>
+
+        <div class="well cart">
+          <h4>購物車</h4>
+
+          <ul class="itemsInCart ">
+            <li v-for="c in cart" :key="c._id">
+              <div class="cart-item">
+                <div class="cart-title">{{c.name}}</div> <span class="price">$ {{ c.price }}</span> x
+                <span class="count">{{c.count}}</span>
+                <div class="handler"><a href="#" class="cart-btn plus" @click.prevent="add(c)">+</a> <a href="#" class="cart-btn minus" @click.prevent="remove(c)">-</a>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <hr>
+          <p>小計： <span>$ {{total}}</span></p>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /.row -->
+  </div>
+</template>
+
+<script>
+// import HelloWorld from './components/HelloWorld.vue';
+import axios from 'axios';
+import store from './store.js';
+
+export default {
+  name: 'app',
+  // data(){
+  //   return{
+  //     prodList: [],
+  //     searchName: '',
+  //     currPage: 1,
+  //     countOfPage: 10,
+  //     cart: [],     // shopping cart
+  //     total: 0,     // $ total
+  //   }
+  // },
+  created(){
+    let that = this;
+    axios.get('./pros-list.json')
+    .then(function(res){
+      that.prodList = res.data;
+    })
+  },
+  computed:{
+    prodList:{
+      set(value){
+        store.commit('setProdList', value);
+      },
+      get() {
+        return store.state.prodList;
+      }
+    },
+    searchName(){
+      return store.state.searchName;
+    },
+    currPage:{
+      get(){
+        return store.state.currPage;
+      },
+      set(value){
+        store.commit('setCurrPage',value);
+      }
+    },
+    countOfPage(){
+      return store.state.countOfPage;
+    },
+    cart(){
+      return store.state.cart;
+    },
+    total(){
+      return store.state.total;
+    },
+    filteredItems: function(){
+      let search = this.searchName.toLowerCase();
+      this.currPage = 1;
+      return this.prodList.filter(function(d){
+        return d.name.toLowerCase().indexOf(search) > -1;
+      })
+    },
+    totalPage: function(){
+      // return Math.ceil(this.prodList.length / this.countOfPage);
+      return Math.ceil(this.filteredItems.length / this.countOfPage);   // 以"搜尋結果"來計算
+    },
+    pageStart: function(){    // 目前頁數的起始索引
+      return (this.currPage - 1) * this.countOfPage;
+    }
+  },
+  methods: {
+    setPage: function(page){
+      if(page <= 0 || page > this.totalPage){
+        return
+      }
+      this.currPage = page;
+    },
+    addItem: function(idx){
+      let item = this.prodList[idx],
+          found = false;        // 預設購物車內沒有該筆商品
+      this.total += item.price;
+
+      for (let i = 0; i < this.cart.length; i++){
+        if(this.cart[i].id === item._id){
+          this.cart[i].count ++;
+          found = true;
+          break;
+        }
+      }
+
+      if(!found){
+        this.cart.push({
+          id: item._id,
+          name: item.name,
+          price: item.price,
+          count: 1
+        })
+      }
+    },
+    add: function(item){
+      item.count ++;
+      this.total += item.price;
+    },
+    remove: function(item){
+      item.count --;
+      this.total -= item.price;
+      if(item.count === 0){
+        this.cart.splice(this.cart.findIndex(function(d){
+          return d._id === item.id
+        }), 1);
+      }
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+#app {
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  margin-top: 60px;
+}
+</style>
